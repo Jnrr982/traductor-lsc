@@ -52,35 +52,30 @@ function extractKeypoints(results) {
 
 
 
- // 1. Extracción IDÉNTICA a Python (SOLO MANOS = 126 puntos)
+// 1. Extracción BLINDADA (Garantiza 126 puntos puros numéricos)
 function extractKeypoints(results) {
     let lh = new Array(63).fill(0);
     let rh = new Array(63).fill(0);
 
-    // Usamos Holistic para que separe izquierda y derecha correctamente, 
-    // pero IGNORAMOS el cuerpo para que el modelo viejo no explote.
-    
     if (results.leftHandLandmarks) {
-        let flatPoints = [];
-        for (const lm of results.leftHandLandmarks) {
-            flatPoints.push(lm.x, lm.y, lm.z);
+        for (let i = 0; i < results.leftHandLandmarks.length; i++) {
+            // El "|| 0" asegura que si llega un vacío, se convierte en cero
+            lh[i*3] = results.leftHandLandmarks[i].x || 0;
+            lh[i*3+1] = results.leftHandLandmarks[i].y || 0;
+            lh[i*3+2] = results.leftHandLandmarks[i].z || 0;
         }
-        lh = flatPoints;
     }
 
     if (results.rightHandLandmarks) {
-        let flatPoints = [];
-        for (const lm of results.rightHandLandmarks) {
-            flatPoints.push(lm.x, lm.y, lm.z);
+        for (let i = 0; i < results.rightHandLandmarks.length; i++) {
+            rh[i*3] = results.rightHandLandmarks[i].x || 0;
+            rh[i*3+1] = results.rightHandLandmarks[i].y || 0;
+            rh[i*3+2] = results.rightHandLandmarks[i].z || 0;
         }
-        rh = flatPoints;
     }
     
-    // Retornamos EXACTAMENTE 126 puntos, que es lo que espera tu modelo
     return [...lh, ...rh];
 }
-}
-
 
 
 // 2. Procesamiento Central
@@ -135,10 +130,9 @@ function onResults(results) {
 
         if (sequence.length === 45 && frameCount % 6 === 0) {
 
-            const inputTensor = tf.tensor3d([sequence]);
-
+            const inputTensor = tf.tensor3d(sequence.flat(), [1, 45, 126]);
+            
             const prediction = model.predict(inputTensor);
-
             const values = Array.from(prediction.dataSync());
 
            
