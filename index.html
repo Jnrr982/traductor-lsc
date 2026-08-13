@@ -3,31 +3,45 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traductor LSC - Proyecto de Grado</title>
+    <title>Traductor LSC UPN</title>
     <link rel="stylesheet" href="style.css">
     
-    <!-- 1. Librerías de MediaPipe -->
+    <!-- Librerías de Inteligencia Artificial -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+    
+    <!-- Librerías de MediaPipe (Visión de cámara) -->
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/holistic/holistic.js" crossorigin="anonymous"></script>
-
-    <!-- 2. Librería de TensorFlow.js -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
 </head>
 <body>
-    <div class="contenedor">
-        <h1>Traductor LSC UPN</h1>
-        
-        <div class="video-container" style="position: relative; width: 640px; height: 480px; margin: 0 auto;">
-            <video id="videoElement" autoplay playsinline style="display: none;"></video>
-            <canvas id="canvasElement" width="640" height="480" style="position: absolute; top: 0; left: 0;"></canvas>
-        </div>
-
-        <div class="traduccion-box" style="text-align: center; margin-top: 20px;">
-            <h2 id="textoTraduccion">Cargando modelo de IA...</h2>
-        </div>
+    <h1 style="text-align: center; color: #333;">Traductor LSC UPN</h1>
+    
+    <div id="video-container">
+        <!-- El video está oculto, solo mostramos el canvas con el esqueleto dibujado -->
+        <video id="videoElement" style="display:none;"></video>
+        <canvas id="canvasElement" width="640" height="480"></canvas>
+        <h2 id="textoTraduccion">Cargando sistema de IA...</h2>
     </div>
 
-    <script src="app.js"></script>
+    <!-- Panel de Control Nativo -->
+    <div id="panel-controles">
+        <h3>Añadir Nueva Seña</h3>
+        <input type="text" id="input-sena" placeholder="Ej: UNIVERSIDAD">
+        <button id="btn-grabar">Empezar a grabar</button>
+        <div id="status-texto">Muestras de grabación: 0</div>
+        
+        <hr>
+        
+        <h3>Memoria Global (Nube)</h3>
+        <button id="btn-subir">Subir a la nube</button>
+        <button id="btn-descargar">Descargar de la nube</button>
+        <div id="nube-status">Sin sincronizar</div>
+    </div>
+
+    <!-- MUY IMPORTANTE: type="module" es obligatorio para conectar con Firebase -->
+    <script type="module" src="app.js"></script>
 </body>
 </html>
