@@ -1,81 +1,136 @@
-// 1. Inyectar librería de IA (KNN Classifier) sin modificar el HTML
-const knnScript = document.createElement('script');
-knnScript.src = "https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier";
-document.head.appendChild(knnScript);
+// Importaciones de Firebase Modular (Desde el CDN oficial de Google)
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getDatabase, ref, set, get, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
 
+// Tu configuración de Firebase
+const firebaseConfig = {
+    apiKey: "AIzaSyCaJQY6N4mv425vmNP_LfRg96z_T-b-x48",
+    authDomain: "traductorlsc-9c550.firebaseapp.com",
+    databaseURL: "https://traductorlsc-9c550-default-rtdb.firebaseio.com",
+    projectId: "traductorlsc-9c550",
+    storageBucket: "traductorlsc-9c550.firebasestorage.app",
+    messagingSenderId: "268728876389",
+    appId: "1:268728876389:web:aada44408906cfe231b58c",
+    measurementId: "G-HQ504NTB1L"
+};
+
+// Inicializar Firebase
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
+
+// Referencias del DOM
 const videoElement = document.getElementById('videoElement');
 const canvasElement = document.getElementById('canvasElement');
 const canvasCtx = canvasElement.getContext('2d');
 const textoTraduccion = document.getElementById('textoTraduccion');
 
-// Variables del nuevo sistema FARO
-let classifier;
+const inputSena = document.getElementById('input-sena');
+const btnGrabar = document.getElementById('btn-grabar');
+const statusTexto = document.getElementById('status-texto');
+const btnSubir = document.getElementById('btn-subir');
+const btnDescargar = document.getElementById('btn-descargar');
+const nubeStatus = document.getElementById('nube-status');
+
+// Variables Globales
+let classifier = knnClassifier.create();
 let isRecording = false;
 let labelToRecord = "";
 let exampleCount = {};
 
-// 2. Construir la interfaz dinámicamente de inmediato
-function crearInterfazFARO() {
-    const panel = document.createElement('div');
-    panel.id = 'faro-controls';
-
-    const titulo = document.createElement('h3');
-    titulo.innerText = "Añadir Nueva Seña";
-    titulo.style.margin = "0 0 5px 0";
-    titulo.style.fontSize = "18px";
-    titulo.style.textAlign = "center";
-
-    const inputSeña = document.createElement('input');
-    inputSeña.type = 'text';
-    inputSeña.id = 'faro-input';
-    inputSeña.placeholder = 'Ej: UNIVERSIDAD';
-
-    const btnGrabar = document.createElement('button');
-    btnGrabar.id = 'faro-btn-add';
-    btnGrabar.innerText = "Empezar a grabar";
-
-    const statusTexto = document.createElement('div');
-    statusTexto.id = 'faro-status';
-    statusTexto.innerText = "Muestras: 0";
-
-    panel.appendChild(titulo);
-    panel.appendChild(inputSeña);
-    panel.appendChild(btnGrabar);
-    panel.appendChild(statusTexto);
-    document.body.appendChild(panel);
-
-    // Lógica de CLIC (Interruptor Empezar/Parar)
-    btnGrabar.addEventListener('click', () => {
-        if (!isRecording) {
-            const seña = inputSeña.value.trim().toUpperCase();
-            if(seña === "") {
-                alert("Primero escribe el nombre de la seña");
-                return;
-            }
-            labelToRecord = seña;
-            isRecording = true;
-            btnGrabar.style.backgroundColor = "#ff2a2a";
-            btnGrabar.innerText = "¡GRABANDO! (Clic para parar)";
-        } else {
-            isRecording = false;
-            btnGrabar.style.backgroundColor = "#F57510";
-            btnGrabar.innerText = "Empezar a grabar";
+// ==========================================
+// 1. LÓGICA DE GRABACIÓN LOCAL
+// ==========================================
+btnGrabar.addEventListener('click', () => {
+    if (!isRecording) {
+        const seña = inputSena.value.trim().toUpperCase();
+        if(seña === "") {
+            alert("Primero escribe el nombre de la seña");
+            return;
         }
-    });
-}
-
-// Llamar la interfaz directo, sin esperar eventos que se puedan bloquear
-crearInterfazFARO();
-
-// Cargar la IA cuando el script de Google esté listo
-knnScript.onload = () => {
-    classifier = knnClassifier.create();
-    if(textoTraduccion) {
-        textoTraduccion.innerText = "¡Sistema listo! Agrega una seña.";
+        labelToRecord = seña;
+        isRecording = true;
+        btnGrabar.style.backgroundColor = "#ff2a2a";
+        btnGrabar.innerText = "¡GRABANDO! (Clic para parar)";
+    } else {
+        isRecording = false;
+        btnGrabar.style.backgroundColor = "#F57510";
+        btnGrabar.innerText = "Empezar a grabar";
     }
-};
+});
 
-// 3. Extracción de coordenadas estricta
+// ==========================================
+// 2. LÓGICA DE LA NUBE (FIREBASE)
+// ==========================================
+
+// SUBIR A LA NUBE
+btnSubir.addEventListener('click', async () => {
+    if (classifier.getNumClasses() === 0) {
+        alert("No tienes ninguna seña grabada aún para subir.");
+        return;
+    }
+    
+    nubeStatus.innerText = "Empaquetando IA y subiendo...";
+    btnSubir.disabled = true;
+
+    try {
+        let dataset = classifier.getClassifierDataset();
+        let datasetObj = {};
+        
+        // Convertimos los Tensores Matemáticos a Arrays normales para Firebase
+        Object.keys(dataset).forEach((key) => {
+            let data = dataset[key].dataSync();
+            datasetObj[key] = {
+                data: Array.from(data),
+                shape: dataset[key].shape
+            };
+        });
+
+        // Guardamos en la ruta "modelo_global" de tu base de datos
+        await set(ref(db, 'modelo_global'), datasetObj);
+        nubeStatus.innerText = "¡Cerebro guardado en la nube!";
+    } catch (error) {
+        console.error("Error subiendo a Firebase:", error);
+        nubeStatus.innerText = "Error al subir.";
+    }
+    btnSubir.disabled = false;
+});
+
+// DESCARGAR DE LA NUBE
+btnDescargar.addEventListener('click', async () => {
+    nubeStatus.innerText = "Descargando conocimiento...";
+    btnDescargar.disabled = true;
+
+    try {
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, 'modelo_global'));
+        
+        if (snapshot.exists()) {
+            let datasetObj = snapshot.val();
+            let tensorObj = {};
+            
+            // Reconstruimos los Tensores Matemáticos a partir de los Arrays
+            Object.keys(datasetObj).forEach((key) => {
+                tensorObj[key] = tf.tensor2d(datasetObj[key].data, datasetObj[key].shape);
+                exampleCount[key] = datasetObj[key].shape[0]; 
+            });
+            
+            classifier.setClassifierDataset(tensorObj);
+            nubeStatus.innerText = "¡Modelo cargado! IA lista.";
+        } else {
+            nubeStatus.innerText = "La nube está vacía.";
+        }
+    } catch (error) {
+        console.error("Error descargando de Firebase:", error);
+        nubeStatus.innerText = "Error de conexión.";
+    }
+    btnDescargar.disabled = false;
+});
+
+// ==========================================
+// 3. VISIÓN POR COMPUTADORA (MediaPipe)
+// ==========================================
+textoTraduccion.innerText = "¡Sistema listo! Agrega o descarga señas.";
+
 function extractKeypoints(results) {
     let lh = new Array(63).fill(0);
     let rh = new Array(63).fill(0);
@@ -97,69 +152,57 @@ function extractKeypoints(results) {
     return [...lh, ...rh];
 }
 
-// 4. Procesamiento Central
 async function onResults(results) {
     canvasCtx.save();
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    // Dibujar esqueleto
-    if (results.leftHandLandmarks) {
-        drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
-        drawLandmarks(canvasCtx, results.leftHandLandmarks, {color: '#FF0000', lineWidth: 2});
-    }
-    if (results.rightHandLandmarks) {
-        drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
-        drawLandmarks(canvasCtx, results.rightHandLandmarks, {color: '#FF0000', lineWidth: 2});
-    }
+    // Dibujar esqueleto de manos
+    if (results.leftHandLandmarks) drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
+    if (results.rightHandLandmarks) drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
 
-    // IA Web Nativa
-    if (classifier && (results.leftHandLandmarks || results.rightHandLandmarks)) {
+    // Lógica de IA
+    if (results.leftHandLandmarks || results.rightHandLandmarks) {
         let keypoints = extractKeypoints(results);
         const tensor = tf.tensor1d(keypoints); 
 
         if (isRecording && labelToRecord !== "") {
             classifier.addExample(tensor, labelToRecord);
-            
             if(!exampleCount[labelToRecord]) exampleCount[labelToRecord] = 0;
             exampleCount[labelToRecord]++;
-            document.getElementById('faro-status').innerText = `Muestras de ${labelToRecord}: ${exampleCount[labelToRecord]}`;
+            statusTexto.innerText = `Muestras de ${labelToRecord}: ${exampleCount[labelToRecord]}`;
         } 
         else if (classifier.getNumClasses() > 0) {
             const result = await classifier.predictClass(tensor);
             const confianza = result.confidences[result.label];
             
+            // Termómetro visual
             let anchoBarra = Math.floor(confianza * 200);
             let altoCanvas = canvasElement.height;
             
             canvasCtx.fillStyle = 'rgba(100, 100, 100, 0.9)';
             canvasCtx.fillRect(10, altoCanvas - 50, 200, 30);
-            
             canvasCtx.fillStyle = 'rgba(245, 117, 16, 0.9)';
             canvasCtx.fillRect(10, altoCanvas - 50, anchoBarra, 30);
-            
             canvasCtx.strokeStyle = 'white';
             canvasCtx.lineWidth = 2;
             canvasCtx.strokeRect(10, altoCanvas - 50, 200, 30);
-            
             canvasCtx.font = "bold 16px Arial";
             canvasCtx.fillStyle = "white";
             
             if (confianza > 0.70) {
-                if(textoTraduccion) textoTraduccion.innerText = result.label;
+                textoTraduccion.innerText = result.label;
                 canvasCtx.fillText(`${result.label}: ${Math.floor(confianza * 100)}%`, 15, altoCanvas - 30);
             } else {
-                if(textoTraduccion) textoTraduccion.innerText = "Esperando seña...";
+                textoTraduccion.innerText = "Esperando seña...";
             }
         }
-        
         tensor.dispose();
     }
-
     canvasCtx.restore();
 }
 
-// 5. Configuración de Cámara
+// Inicialización de la Cámara
 const holistic = new Holistic({locateFile: (file) => {
     return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
 }});
