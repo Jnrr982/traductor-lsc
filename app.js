@@ -32,7 +32,7 @@ function crearInterfazFARO() {
 
     const btnGrabar = document.createElement('button');
     btnGrabar.id = 'faro-btn-add';
-    btnGrabar.innerText = "Mantener presionado";
+    btnGrabar.innerText = "Empezar a grabar";
 
     const statusTexto = document.createElement('div');
     statusTexto.id = 'faro-status';
@@ -44,37 +44,27 @@ function crearInterfazFARO() {
     panel.appendChild(statusTexto);
     document.body.appendChild(panel);
 
-    // Lógica para grabar al mantener presionado el botón
-    btnGrabar.addEventListener('mousedown', () => {
-        const seña = inputSeña.value.trim().toUpperCase();
-        if(seña === "") {
-            alert("Primero escribe el nombre de la seña");
-            return;
+    // NUEVA LÓGICA DE CLIC (Interruptor Empezar/Parar)
+    btnGrabar.addEventListener('click', () => {
+        if (!isRecording) {
+            // Acción 1: Iniciar grabación
+            const seña = inputSeña.value.trim().toUpperCase();
+            if(seña === "") {
+                alert("Primero escribe el nombre de la seña");
+                return;
+            }
+            labelToRecord = seña;
+            isRecording = true;
+            btnGrabar.style.backgroundColor = "#ff2a2a";
+            btnGrabar.innerText = "¡GRABANDO! (Clic para parar)";
+        } else {
+            // Acción 2: Detener grabación
+            isRecording = false;
+            btnGrabar.style.backgroundColor = "#F57510";
+            btnGrabar.innerText = "Empezar a grabar";
         }
-        labelToRecord = seña;
-        isRecording = true;
-        btnGrabar.style.backgroundColor = "#ff2a2a";
-        btnGrabar.innerText = "¡GRABANDO!";
     });
-
-    const detenerGrabacion = () => {
-        isRecording = false;
-        btnGrabar.style.backgroundColor = "#F57510";
-        btnGrabar.innerText = "Mantener presionado";
-    };
-
-    btnGrabar.addEventListener('mouseup', detenerGrabacion);
-    btnGrabar.addEventListener('mouseleave', detenerGrabacion);
 }
-
-// Inicializar sistema cuando cargue la página
-window.addEventListener('DOMContentLoaded', () => {
-    crearInterfazFARO();
-    knnScript.onload = () => {
-        classifier = knnClassifier.create();
-        textoTraduccion.innerText = "¡Sistema listo! Agrega una seña.";
-    };
-});
 
 // 3. Extracción de coordenadas estricta
 function extractKeypoints(results) {
