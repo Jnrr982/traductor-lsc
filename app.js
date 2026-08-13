@@ -14,7 +14,7 @@ let isRecording = false;
 let labelToRecord = "";
 let exampleCount = {};
 
-// 2. Construir la interfaz dinámicamente sin tocar HTML
+// 2. Construir la interfaz dinámicamente de inmediato
 function crearInterfazFARO() {
     const panel = document.createElement('div');
     panel.id = 'faro-controls';
@@ -44,10 +44,9 @@ function crearInterfazFARO() {
     panel.appendChild(statusTexto);
     document.body.appendChild(panel);
 
-    // NUEVA LÓGICA DE CLIC (Interruptor Empezar/Parar)
+    // Lógica de CLIC (Interruptor Empezar/Parar)
     btnGrabar.addEventListener('click', () => {
         if (!isRecording) {
-            // Acción 1: Iniciar grabación
             const seña = inputSeña.value.trim().toUpperCase();
             if(seña === "") {
                 alert("Primero escribe el nombre de la seña");
@@ -58,13 +57,23 @@ function crearInterfazFARO() {
             btnGrabar.style.backgroundColor = "#ff2a2a";
             btnGrabar.innerText = "¡GRABANDO! (Clic para parar)";
         } else {
-            // Acción 2: Detener grabación
             isRecording = false;
             btnGrabar.style.backgroundColor = "#F57510";
             btnGrabar.innerText = "Empezar a grabar";
         }
     });
 }
+
+// Llamar la interfaz directo, sin esperar eventos que se puedan bloquear
+crearInterfazFARO();
+
+// Cargar la IA cuando el script de Google esté listo
+knnScript.onload = () => {
+    classifier = knnClassifier.create();
+    if(textoTraduccion) {
+        textoTraduccion.innerText = "¡Sistema listo! Agrega una seña.";
+    }
+};
 
 // 3. Extracción de coordenadas estricta
 function extractKeypoints(results) {
@@ -109,7 +118,6 @@ async function onResults(results) {
         let keypoints = extractKeypoints(results);
         const tensor = tf.tensor1d(keypoints); 
 
-        // Si el botón está presionado, guardamos el movimiento
         if (isRecording && labelToRecord !== "") {
             classifier.addExample(tensor, labelToRecord);
             
@@ -117,12 +125,10 @@ async function onResults(results) {
             exampleCount[labelToRecord]++;
             document.getElementById('faro-status').innerText = `Muestras de ${labelToRecord}: ${exampleCount[labelToRecord]}`;
         } 
-        // Si no estamos grabando y ya existen señas, predecimos
         else if (classifier.getNumClasses() > 0) {
             const result = await classifier.predictClass(tensor);
             const confianza = result.confidences[result.label];
             
-            // Termómetro y validación
             let anchoBarra = Math.floor(confianza * 200);
             let altoCanvas = canvasElement.height;
             
@@ -140,14 +146,14 @@ async function onResults(results) {
             canvasCtx.fillStyle = "white";
             
             if (confianza > 0.70) {
-                textoTraduccion.innerText = result.label;
+                if(textoTraduccion) textoTraduccion.innerText = result.label;
                 canvasCtx.fillText(`${result.label}: ${Math.floor(confianza * 100)}%`, 15, altoCanvas - 30);
             } else {
-                textoTraduccion.innerText = "Esperando seña...";
+                if(textoTraduccion) textoTraduccion.innerText = "Esperando seña...";
             }
         }
         
-        tensor.dispose(); // Vital para que no se congele el navegador
+        tensor.dispose();
     }
 
     canvasCtx.restore();
