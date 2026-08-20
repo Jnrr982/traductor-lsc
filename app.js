@@ -75,7 +75,7 @@ btnGrabar.addEventListener('click', () => {
 // 2. LÓGICA DE LA NUBE (FIREBASE)
 // ==========================================
 
-// SUBIR A LA NUBE (Sincronización Inteligente)
+// SUBIR A LA NUBE (Sincronización Inteligente por Bloques)
 btnSubir.addEventListener('click', async () => {
     if (classifier.getNumClasses() === 0) {
         alert("No tienes ninguna seña para subir.");
@@ -96,7 +96,7 @@ btnSubir.addEventListener('click', async () => {
         // 2. Extraer las señas que el usuario tiene en su cámara local
         let localDataset = classifier.getClassifierDataset();
         
-        // 3. Mezclar: Añadimos (o actualizamos) las señas locales dentro de los datos de la nube
+        // 3. Mezclar: Añadimos (o actualizamos) las señas locales dentro de los datos
         Object.keys(localDataset).forEach((key) => {
             let data = localDataset[key].dataSync();
             nubeData[key] = {
@@ -105,8 +105,11 @@ btnSubir.addEventListener('click', async () => {
             };
         });
 
-        // 4. Subir el "Super-Cerebro" (La combinación de todo)
-        await set(ref(db, 'modelo_global'), nubeData);
+        // 4. Subir el "Super-Cerebro" (Pieza por pieza para evitar WRITE_TOO_BIG)
+        for (const sena of Object.keys(nubeData)) {
+            await set(ref(db, `modelo_global/${sena}`), nubeData[sena]);
+        }
+        
         nubeStatus.innerText = "¡Sincronización perfecta! Todo guardado.";
     } catch (error) {
         console.error("Error sincronizando con Firebase:", error);
