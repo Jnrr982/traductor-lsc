@@ -36,6 +36,19 @@ let classifier = knnClassifier.create();
 let isRecording = false;
 let labelToRecord = "";
 let exampleCount = {};
+// Variable para evitar que la voz se repita infinitamente
+let ultimaSenaHablada = "";
+
+// Función que invoca el sintetizador del navegador
+function reproducirVoz(texto) {
+    if ('speechSynthesis' in window) {
+        window.speechSynthesis.cancel(); // Corta cualquier audio anterior
+        const mensaje = new SpeechSynthesisUtterance(texto);
+        mensaje.lang = 'es-CO'; // Configurado para acento de Colombia
+        mensaje.rate = 1.0;     // Velocidad normal
+        window.speechSynthesis.speak(mensaje);
+    }
+}
 
 // ==========================================
 // 1. LÓGICA DE GRABACIÓN LOCAL
@@ -193,8 +206,17 @@ async function onResults(results) {
             if (confianza > 0.70) {
                 textoTraduccion.innerText = result.label;
                 canvasCtx.fillText(`${result.label}: ${Math.floor(confianza * 100)}%`, 15, altoCanvas - 30);
+                
+                // --- NUEVA LÓGICA DE VOZ ---
+                // Solo habla si la seña es diferente a la que acaba de pronunciar
+                if (result.label !== ultimaSenaHablada) {
+                    reproducirVoz(result.label);
+                    ultimaSenaHablada = result.label;
+                }
             } else {
                 textoTraduccion.innerText = "Esperando seña...";
+                // Al perder la seña, reseteamos la memoria para poder repetirla luego
+                ultimaSenaHablada = ""; 
             }
         }
         tensor.dispose();
