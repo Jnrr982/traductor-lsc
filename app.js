@@ -75,34 +75,41 @@ btnGrabar.addEventListener('click', () => {
 // 2. LÓGICA DE LA NUBE (FIREBASE)
 // ==========================================
 
-// SUBIR A LA NUBE
+// SUBIR A LA NUBE (Sincronización Inteligente)
 btnSubir.addEventListener('click', async () => {
     if (classifier.getNumClasses() === 0) {
-        alert("No tienes ninguna seña grabada aún para subir.");
+        alert("No tienes ninguna seña para subir.");
         return;
     }
     
-    nubeStatus.innerText = "Empaquetando IA y subiendo...";
+    nubeStatus.innerText = "Sincronizando y fusionando datos...";
     btnSubir.disabled = true;
 
     try {
-        let dataset = classifier.getClassifierDataset();
-        let datasetObj = {};
+        // 1. Revisar silenciosamente qué hay en la nube ahora mismo
+        const dbRef = ref(db);
+        const snapshot = await get(child(dbRef, 'modelo_global'));
         
-        // Convertimos los Tensores Matemáticos a Arrays normales para Firebase
-        Object.keys(dataset).forEach((key) => {
-            let data = dataset[key].dataSync();
-            datasetObj[key] = {
+        // Si hay datos en la nube los guardamos, si no, creamos un espacio vacío
+        let nubeData = snapshot.exists() ? snapshot.val() : {};
+
+        // 2. Extraer las señas que el usuario tiene en su cámara local
+        let localDataset = classifier.getClassifierDataset();
+        
+        // 3. Mezclar: Añadimos (o actualizamos) las señas locales dentro de los datos de la nube
+        Object.keys(localDataset).forEach((key) => {
+            let data = localDataset[key].dataSync();
+            nubeData[key] = {
                 data: Array.from(data),
-                shape: dataset[key].shape
+                shape: localDataset[key].shape
             };
         });
 
-        // Guardamos en la ruta "modelo_global" de tu base de datos
-        await set(ref(db, 'modelo_global'), datasetObj);
-        nubeStatus.innerText = "¡Cerebro guardado en la nube!";
+        // 4. Subir el "Super-Cerebro" (La combinación de todo)
+        await set(ref(db, 'modelo_global'), nubeData);
+        nubeStatus.innerText = "¡Sincronización perfecta! Todo guardado.";
     } catch (error) {
-        console.error("Error subiendo a Firebase:", error);
+        console.error("Error sincronizando con Firebase:", error);
         nubeStatus.innerText = "Error al subir.";
     }
     btnSubir.disabled = false;
@@ -245,3 +252,12 @@ const camera = new Camera(videoElement, {
     height: 480
 });
 camera.start();
+// ==========================================
+// 4. AUTO-CARGA AL ABRIR LA PÁGINA
+// ==========================================
+window.addEventListener('load', () => {
+    // Simula un clic en el botón de descargar automáticamente
+    setTimeout(() => {
+        btnDescargar.click();
+    }, 1500); // Esperamos 1.5 segundos para asegurar que todo el HTML cargó
+});
