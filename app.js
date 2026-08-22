@@ -150,26 +150,33 @@ btnDescargar.addEventListener('click', async () => {
 });
 
 // ==========================================
-// 3. VISIÓN POR COMPUTADORA (MediaPipe)
+// 3. VISIÓN POR COMPUTADORA ULTRA-OPTIMIZADA (MediaPipe Hands)
 // ==========================================
 textoTraduccion.innerText = "¡Sistema listo! Agrega o descarga señas.";
 
+// Traductor de coordenadas para no romper la memoria de Firebase
 function extractKeypoints(results) {
     let lh = new Array(63).fill(0);
     let rh = new Array(63).fill(0);
 
-    if (results.leftHandLandmarks) {
-        for (let i = 0; i < results.leftHandLandmarks.length; i++) {
-            lh[i*3] = results.leftHandLandmarks[i].x || 0;
-            lh[i*3+1] = results.leftHandLandmarks[i].y || 0;
-            lh[i*3+2] = results.leftHandLandmarks[i].z || 0;
-        }
-    }
-    if (results.rightHandLandmarks) {
-        for (let i = 0; i < results.rightHandLandmarks.length; i++) {
-            rh[i*3] = results.rightHandLandmarks[i].x || 0;
-            rh[i*3+1] = results.rightHandLandmarks[i].y || 0;
-            rh[i*3+2] = results.rightHandLandmarks[i].z || 0;
+    if (results.multiHandLandmarks && results.multiHandedness) {
+        for (let i = 0; i < results.multiHandLandmarks.length; i++) {
+            const landmarks = results.multiHandLandmarks[i];
+            const handType = results.multiHandedness[i].label; // Identifica si es "Left" o "Right"
+
+            if (handType === "Left") {
+                for (let j = 0; j < landmarks.length; j++) {
+                    lh[j*3] = landmarks[j].x || 0;
+                    lh[j*3+1] = landmarks[j].y || 0;
+                    lh[j*3+2] = landmarks[j].z || 0;
+                }
+            } else if (handType === "Right") {
+                for (let j = 0; j < landmarks.length; j++) {
+                    rh[j*3] = landmarks[j].x || 0;
+                    rh[j*3+1] = landmarks[j].y || 0;
+                    rh[j*3+2] = landmarks[j].z || 0;
+                }
+            }
         }
     }
     return [...lh, ...rh];
@@ -180,12 +187,16 @@ async function onResults(results) {
     canvasCtx.clearRect(0, 0, canvasElement.width, canvasElement.height);
     canvasCtx.drawImage(results.image, 0, 0, canvasElement.width, canvasElement.height);
 
-    // Dibujar esqueleto de manos
-    if (results.leftHandLandmarks) drawConnectors(canvasCtx, results.leftHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
-    if (results.rightHandLandmarks) drawConnectors(canvasCtx, results.rightHandLandmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
+    // Dibujar esqueleto de manos usando el nuevo formato
+    if (results.multiHandLandmarks) {
+        for (const landmarks of results.multiHandLandmarks) {
+            drawConnectors(canvasCtx, landmarks, HAND_CONNECTIONS, {color: '#00FF00', lineWidth: 4});
+            drawLandmarks(canvasCtx, landmarks, {color: '#FF0000', lineWidth: 2});
+        }
+    }
 
-    // Lógica de IA
-    if (results.leftHandLandmarks || results.rightHandLandmarks) {
+    // Lógica de IA con el nuevo formato
+    if (results.multiHandLandmarks && results.multiHandLandmarks.length > 0) {
         let keypoints = extractKeypoints(results);
         const tensor = tf.tensor1d(keypoints); 
 
@@ -217,15 +228,13 @@ async function onResults(results) {
                 textoTraduccion.innerText = result.label;
                 canvasCtx.fillText(`${result.label}: ${Math.floor(confianza * 100)}%`, 15, altoCanvas - 30);
                 
-                // --- NUEVA LÓGICA DE VOZ ---
-                // Solo habla si la seña es diferente a la que acaba de pronunciar
+                // --- LÓGICA DE VOZ ---
                 if (result.label !== ultimaSenaHablada) {
                     reproducirVoz(result.label);
                     ultimaSenaHablada = result.label;
                 }
             } else {
                 textoTraduccion.innerText = "Esperando seña...";
-                // Al perder la seña, reseteamos la memoria para poder repetirla luego
                 ultimaSenaHablada = ""; 
             }
         }
@@ -234,33 +243,34 @@ async function onResults(results) {
     canvasCtx.restore();
 }
 
-// Inicialización de la Cámara
-const holistic = new Holistic({locateFile: (file) => {
-    return `https://cdn.jsdelivr.net/npm/@mediapipe/holistic/${file}`;
+// 5. INICIALIZACIÓN DE CÁMARA PARA MÁXIMO RENDIMIENTO MÓVIL
+const hands = new Hands({locateFile: (file) => {
+    return `https://cdn.jsdelivr.net/npm/@mediapipe/hands/${file}`;
 }});
 
-holistic.setOptions({
-    modelComplexity: 1,
-    smoothLandmarks: true,
+hands.setOptions({
+    maxNumHands: 2,
+    modelComplexity: 0, // El secreto de los FPS: 0 = Máxima velocidad
     minDetectionConfidence: 0.5,
     minTrackingConfidence: 0.5
 });
-holistic.onResults(onResults);
+hands.onResults(onResults);
 
 const camera = new Camera(videoElement, {
     onFrame: async () => {
-        await holistic.send({image: videoElement});
+        await hands.send({image: videoElement});
     },
-    width: 640,
-    height: 480
+    width: 480,  // Resolución reducida para optimizar procesamiento
+    height: 360,
+    facingMode: "user"
 });
 camera.start();
+
 // ==========================================
 // 4. AUTO-CARGA AL ABRIR LA PÁGINA
 // ==========================================
 window.addEventListener('load', () => {
-    // Simula un clic en el botón de descargar automáticamente
     setTimeout(() => {
         btnDescargar.click();
-    }, 1500); // Esperamos 1.5 segundos para asegurar que todo el HTML cargó
+    }, 1500); 
 });
