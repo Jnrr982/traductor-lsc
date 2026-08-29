@@ -38,6 +38,10 @@ let labelToRecord = "";
 let exampleCount = {};
 // Variable para evitar que la voz se repita infinitamente
 let ultimaSenaHablada = "";
+// --- NUEVAS VARIABLES DE PACIENCIA ---
+let senaCandidata = ""; 
+let contadorFrames = 0;
+const UMBRAL_FRAMES = 15; // Equivale a medio segundo de confirmación visual
 
 // Función que invoca el sintetizador del navegador
 function reproducirVoz(texto) {
@@ -225,18 +229,38 @@ async function onResults(results) {
             canvasCtx.fillStyle = "white";
             
             if (confianza > 0.70) {
-                textoTraduccion.innerText = result.label;
+                // 1. Verificamos si la IA sigue viendo la misma seña o si cambió de opinión
+                if (result.label === senaCandidata) {
+                    contadorFrames++; // Si es la misma, aumentamos la paciencia
+                } else {
+                    senaCandidata = result.label; // Si es diferente, empezamos a contar de cero
+                    contadorFrames = 1;
+                }
+
+                // 2. Solo actuamos si la paciencia llegó al límite (Confirmación real)
+                if (contadorFrames >= UMBRAL_FRAMES) {
+                    textoTraduccion.innerText = result.label;
+                    
+                    // --- LÓGICA DE VOZ ---
+                    if (result.label !== ultimaSenaHablada) {
+                        reproducirVoz(result.label);
+                        ultimaSenaHablada = result.label;
+                    }
+                } else {
+                    // Feedback visual para que sepas que la IA lo está "pensando"
+                    textoTraduccion.innerText = `Detectando: ${result.label}...`;
+                }
+
+                // La barra termómetro y el porcentaje se siguen mostrando en tiempo real
                 canvasCtx.fillText(`${result.label}: ${Math.floor(confianza * 100)}%`, 15, altoCanvas - 30);
                 
-                // --- LÓGICA DE VOZ ---
-                if (result.label !== ultimaSenaHablada) {
-                    reproducirVoz(result.label);
-                    ultimaSenaHablada = result.label;
-                }
             } else {
+                // Si la confianza baja del 70%, reseteamos toda la memoria temporal
                 textoTraduccion.innerText = "Esperando seña...";
                 ultimaSenaHablada = ""; 
-            }
+                senaCandidata = "";
+                contadorFrames = 0;
+            } 
         }
         tensor.dispose();
     }
