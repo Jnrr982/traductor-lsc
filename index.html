@@ -1,49 +1,124 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Traductor LSC UPN</title>
-    <link rel="stylesheet" href="style.css">
-    
-    <!-- Librerías de Inteligencia Artificial -->
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
-    
-    <!-- Librerías de MediaPipe (Visión de cámara) -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
-    
-    <!-- EL CAMBIO DEFINITIVO: Ahora usamos exclusivamente el motor de Manos -->
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#123c68">
+  <title>LSC Conecta | Universidad Pedagógica Nacional</title>
+  
+  <link rel="stylesheet" href="style.css">
+
+  <!-- 1. TensorFlow.js & KNN Classifier -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+
+  <!-- 2. MediaPipe Hands y Utilidades de Cámara/Dibujo -->
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
-    <h1 style="text-align: center; color: #333;">Traductor LSC UPN</h1>
-    
-    <div id="video-container">
-        <!-- El video está oculto, solo mostramos el canvas con el esqueleto dibujado -->
-        <video id="videoElement" style="display:none;"></video>
-        <canvas id="canvasElement" width="640" height="480"></canvas>
-        <h2 id="textoTraduccion">Cargando sistema de IA...</h2>
-    </div>
+  <div class="site-shell">
+    <header class="topbar">
+      <div class="institution-bar">
+        <div class="upn-seal" aria-hidden="true">UPN</div>
+        <div>
+          <div class="institution-name">Universidad Pedagógica Nacional</div>
+          <div class="institution-subtitle">Facultad de Ciencia y Tecnología</div>
+        </div>
+      </div>
+      <div class="project-tag"><span class="status-dot"></span> Proyecto académico</div>
+    </header>
 
-    <!-- Panel de Control Nativo -->
-    <div id="panel-controles">
-        <h3>Añadir Nueva Seña</h3>
-        <input type="text" id="input-sena" placeholder="Ej: UNIVERSIDAD">
-        <button id="btn-grabar">Empezar a grabar</button>
-        <div id="status-texto">Muestras de grabación: 0</div>
-        
-        <hr>
-        
-        <h3>Memoria Global (Nube)</h3>
-        <button id="btn-subir">Subir a la nube</button>
-        <button id="btn-descargar">Descargar de la nube</button>
-        <div id="nube-status">Sin sincronizar</div>
-    </div>
+    <main class="container">
+      <section class="hero">
+        <div class="hero-copy">
+          <p class="eyebrow">DISEÑO TECNOLÓGICO · INNOVACIÓN EDUCATIVA</p>
+          <h1>Traductor de <span>Lengua de Señas Colombiana</span></h1>
+          <p class="lead">Una herramienta experimental para apoyar la comunicación entre personas sordas y oyentes mediante visión por computadora, inteligencia artificial y síntesis de voz.</p>
+        </div>
+        <div class="hero-card">
+          <div class="hero-card-label">DIRECCIÓN DE TRADUCCIÓN</div>
+          <div class="direction">LSC <b>→</b> VOZ</div>
+          <p>Reconocimiento de señas en tiempo real</p>
+        </div>
+      </section>
 
-    <!-- MUY IMPORTANTE: type="module" es obligatorio para conectar con Firebase -->
-    <script type="module" src="app.js"></script>
+      <div class="academic-note">
+        <span class="note-symbol">i</span>
+        <p><strong>Prototipo de investigación.</strong> El sistema reconoce las señas previamente configuradas y genera una salida de texto para su reproducción por voz.</p>
+      </div>
+
+      <section class="workspace">
+        <article class="card capture-card">
+          <div class="card-title-row">
+            <div>
+              <p class="section-number">01 / CAPTURA Y RECONOCIMIENTO</p>
+              <h2>Observación de la seña</h2>
+            </div>
+            <span class="live-label"><span></span> CÁMARA</span>
+          </div>
+
+          <div id="video-container" class="camera-stage">
+            <video id="videoElement" playsinline style="display:none;"></video>
+            <canvas id="canvasElement" width="640" height="480"></canvas>
+            <div class="frame-corner tl"></div><div class="frame-corner tr"></div>
+            <div class="frame-corner bl"></div><div class="frame-corner br"></div>
+            <div class="camera-message">Ubica tus manos dentro del encuadre</div>
+          </div>
+
+          <div class="result-box">
+            <div class="result-heading"><span>RESULTADO DEL RECONOCIMIENTO</span><span class="result-chip">TEXTO</span></div>
+            <div id="textoTraduccion" class="result-text">Cargando sistema de IA...</div>
+            <div class="result-bottom"><span>Salida interpretada</span><span class="ready-text">● Procesamiento activo</span></div>
+          </div>
+        </article>
+
+        <aside class="side-panel">
+          <section class="card action-card">
+            <div class="card-title-row compact">
+              <div><p class="section-number">02 / ENTRENAMIENTO</p><h2>Registrar una seña</h2></div>
+              <span class="step-badge">A</span>
+            </div>
+            <p class="card-description">Añade ejemplos para que el clasificador pueda identificar una nueva seña.</p>
+            <label for="input-sena">Nombre de la seña</label>
+            <input id="input-sena" type="text" placeholder="Ej. HOLA" autocomplete="off">
+            <button id="btn-grabar" class="btn btn-primary">● &nbsp; Empezar a grabar</button>
+            <div id="status-texto" class="status-line">Muestras de grabación: 0</div>
+          </section>
+
+          <section class="card action-card">
+            <div class="card-title-row compact">
+              <div><p class="section-number">03 / GESTIÓN DE DATOS</p><h2>Memoria del modelo</h2></div>
+              <span class="step-badge cloud">☁</span>
+            </div>
+            <p class="card-description">Sincroniza las señas aprendidas con el almacenamiento configurado.</p>
+            <button id="btn-subir" class="btn btn-secondary">↑ &nbsp; Subir a la nube</button>
+            <button id="btn-descargar" class="btn btn-outline">↓ &nbsp; Descargar modelo</button>
+            <div id="nube-status" class="status-line cloud-status">Sin sincronizar</div>
+          </section>
+
+          <section class="guidance">
+            <div class="guidance-icon">✓</div>
+            <div><strong>Recomendaciones de captura</strong><p>Utiliza iluminación uniforme, un fondo despejado y realiza la seña de frente a la cámara.</p></div>
+          </section>
+        </aside>
+      </section>
+
+      <section class="principles">
+        <div><span>01</span><strong>Inclusión</strong><p>Comunicación más accesible.</p></div>
+        <div><span>02</span><strong>Tecnología</strong><p>Visión por computadora.</p></div>
+        <div><span>03</span><strong>Experimentación</strong><p>Aprendizaje mediante ejemplos.</p></div>
+      </section>
+    </main>
+
+    <footer class="footer">
+      <span>LSC Conecta · Prototipo académico</span>
+      <span>Universidad Pedagógica Nacional · Colombia</span>
+    </footer>
+  </div>
+
+  <!-- Carga del script de la aplicación -->
+  <script type="module" src="app.js"></script>
 </body>
 </html>
