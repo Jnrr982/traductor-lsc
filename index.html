@@ -1,124 +1,314 @@
+
 <!DOCTYPE html>
 <html lang="es">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="theme-color" content="#123c68">
-  <title>LSC Conecta | Universidad Pedagógica Nacional</title>
-  
+  <meta name="theme-color" content="#071b69">
+  <meta name="description" content="LSC Conecta: prototipo académico para experimentar con el reconocimiento de señas configuradas de Lengua de Señas Colombiana y su salida en voz.">
+  <title>LSC Conecta | Prototipo académico</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="style.css">
 
-  <!-- 1. TensorFlow.js & KNN Classifier -->
+  <!-- TensorFlow.js y clasificador KNN -->
   <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest"></script>
-  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/knn-classifier@latest"></script>
 
-  <!-- 2. MediaPipe Hands y Utilidades de Cámara/Dibujo -->
+  <!-- MediaPipe Hands: detección, cámara y dibujo de puntos -->
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
 </head>
 <body>
-  <div class="site-shell">
-    <header class="topbar">
-      <div class="institution-bar">
-        <div class="upn-seal" aria-hidden="true">UPN</div>
-        <div>
-          <div class="institution-name">Universidad Pedagógica Nacional</div>
-          <div class="institution-subtitle">Facultad de Ciencia y Tecnología</div>
-        </div>
-      </div>
-      <div class="project-tag"><span class="status-dot"></span> Proyecto académico</div>
-    </header>
+  <a class="skip-link" href="#contenido-principal">Saltar al contenido principal</a>
 
-    <main class="container">
-      <section class="hero">
+  <!-- Franja superior: acceso al portal institucional -->
+  <div class="utility-bar">
+    <div class="utility-inner">
+      <span class="utility-caption">Universidad Pedagógica Nacional · Educadora de educadores</span>
+      <nav class="utility-links" aria-label="Enlaces institucionales rápidos">
+        <a href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer">Portal UPN <span aria-hidden="true">↗</span></a>
+        <a href="https://www.upn.edu.co/identidad-institucional/" target="_blank" rel="noopener noreferrer">Identidad institucional <span aria-hidden="true">↗</span></a>
+      </nav>
+    </div>
+  </div>
+
+  <!-- Encabezado del proyecto con identidad visual institucional de referencia -->
+  <header class="site-header">
+    <div class="header-main page-width">
+      <a class="brand-lockup" href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer" aria-label="Abrir el sitio oficial de la Universidad Pedagógica Nacional en una nueva pestaña">
+        <img
+          class="upn-logo"
+          src="https://www.upn.edu.co/wp-content/uploads/2025/08/Identidad-UPN-25-vertical-azul-fondo-transparente.png"
+          alt="Logotipo de la Universidad Pedagógica Nacional"
+          width="88"
+          height="88"
+          fetchpriority="high">
+        <span class="brand-copy">
+          <span class="brand-title">LSC Conecta</span>
+          <span class="brand-subtitle">Traductor experimental de LSC a voz</span>
+          <span class="brand-context">Proyecto académico · Diseño Tecnológico</span>
+        </span>
+      </a>
+
+      <button class="menu-toggle" id="btn-menu" type="button" aria-label="Abrir menú de navegación" aria-controls="main-navigation" aria-expanded="false">
+        <span></span><span></span><span></span>
+      </button>
+
+      <nav class="main-navigation" id="main-navigation" aria-label="Navegación principal">
+        <a class="nav-link" href="#inicio">Inicio</a>
+
+        <div class="nav-item has-dropdown">
+          <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="menu-institucional">
+            Universidad <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div class="dropdown-menu" id="menu-institucional">
+            <a href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer">Portal institucional <span aria-hidden="true">↗</span></a>
+            <a href="https://www.upn.edu.co/identidad-institucional/" target="_blank" rel="noopener noreferrer">Identidad institucional <span aria-hidden="true">↗</span></a>
+            <a href="https://personal.upn.edu.co/" target="_blank" rel="noopener noreferrer">Talento Humano <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+
+        <div class="nav-item has-dropdown">
+          <button class="nav-dropdown-toggle" type="button" aria-expanded="false" aria-controls="menu-academico">
+            Recursos UPN <span class="chevron" aria-hidden="true"></span>
+          </button>
+          <div class="dropdown-menu" id="menu-academico">
+            <a href="https://www.upn.edu.co/?s=pregrados" target="_blank" rel="noopener noreferrer">Oferta de pregrados <span aria-hidden="true">↗</span></a>
+            <a href="https://investigaciones.upn.edu.co/" target="_blank" rel="noopener noreferrer">Investigación <span aria-hidden="true">↗</span></a>
+            <a href="https://radio.upn.edu.co/pagina-de-inicio/" target="_blank" rel="noopener noreferrer">La Pedagógica Radio <span aria-hidden="true">↗</span></a>
+          </div>
+        </div>
+
+        <a class="nav-link" href="#traductor">Traductor</a>
+        <a class="nav-link nav-highlight" href="#entrenamiento">Entrenar señas <span aria-hidden="true">↓</span></a>
+      </nav>
+    </div>
+  </header>
+
+  <main id="contenido-principal">
+    <section class="hero-banner" id="inicio" aria-labelledby="hero-title">
+      <div class="hero-pattern" aria-hidden="true"></div>
+      <div class="hero-content page-width">
         <div class="hero-copy">
-          <p class="eyebrow">DISEÑO TECNOLÓGICO · INNOVACIÓN EDUCATIVA</p>
-          <h1>Traductor de <span>Lengua de Señas Colombiana</span></h1>
-          <p class="lead">Una herramienta experimental para apoyar la comunicación entre personas sordas y oyentes mediante visión por computadora, inteligencia artificial y síntesis de voz.</p>
+          <p class="eyebrow"><span class="eyebrow-mark"></span> INNOVACIÓN EDUCATIVA · DISEÑO TECNOLÓGICO</p>
+          <h1 id="hero-title">Una comunicación más accesible, <span>seña a seña.</span></h1>
+          <p class="hero-description">Explora un prototipo que utiliza visión por computadora para reconocer señas configuradas y convertir su etiqueta en una salida de voz en español.</p>
+          <div class="hero-actions">
+            <a class="button button-light" href="#traductor">Abrir traductor <span aria-hidden="true">↓</span></a>
+            <span class="prototype-badge"><span class="badge-dot"></span> Prototipo de investigación</span>
+          </div>
         </div>
-        <div class="hero-card">
-          <div class="hero-card-label">DIRECCIÓN DE TRADUCCIÓN</div>
-          <div class="direction">LSC <b>→</b> VOZ</div>
-          <p>Reconocimiento de señas en tiempo real</p>
+
+        <aside class="direction-panel" aria-label="Dirección de traducción">
+          <span class="direction-overline">DIRECCIÓN DE TRADUCCIÓN</span>
+          <div class="direction-flow"><span class="direction-lsc">LSC</span><span class="direction-arrow" aria-hidden="true">⟶</span><span class="direction-voice">VOZ</span></div>
+          <div class="direction-divider"></div>
+          <p>Reconocimiento visual<br>y síntesis de voz</p>
+          <div class="direction-wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i><i></i></div>
+        </aside>
+      </div>
+      <div class="hero-bottom-line" aria-hidden="true"></div>
+    </section>
+
+    <div class="page-width page-content">
+      <section class="academic-notice" aria-label="Alcance del prototipo">
+        <span class="notice-icon" aria-hidden="true">i</span>
+        <div>
+          <strong>Alcance experimental</strong>
+          <p>El sistema reconoce las señas que se hayan registrado en su modelo. La salida es una etiqueta de texto reproducida por voz; no representa una traducción completa ni certificada de toda la Lengua de Señas Colombiana.</p>
         </div>
+        <a href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer" class="notice-link">Portal UPN <span aria-hidden="true">↗</span></a>
       </section>
 
-      <div class="academic-note">
-        <span class="note-symbol">i</span>
-        <p><strong>Prototipo de investigación.</strong> El sistema reconoce las señas previamente configuradas y genera una salida de texto para su reproducción por voz.</p>
+      <div class="section-intro" id="traductor">
+        <div>
+          <p class="section-kicker">PLATAFORMA INTERACTIVA</p>
+          <h2>Espacio de reconocimiento</h2>
+          <p class="section-lead">Centra las manos dentro del encuadre para observar el reconocimiento en tiempo real.</p>
+        </div>
+        <div class="system-state" id="system-state" aria-live="polite">
+          <span class="system-state-dot" id="system-state-dot"></span>
+          <span id="system-state-text">Preparando sistema</span>
+        </div>
       </div>
 
-      <section class="workspace">
-        <article class="card capture-card">
-          <div class="card-title-row">
-            <div>
-              <p class="section-number">01 / CAPTURA Y RECONOCIMIENTO</p>
-              <h2>Observación de la seña</h2>
+      <section class="workspace" aria-label="Herramientas del traductor">
+        <article class="panel camera-panel">
+          <div class="panel-heading">
+            <div class="panel-heading-copy">
+              <span class="step-label">01 <span>/</span> CAPTURA Y RECONOCIMIENTO</span>
+              <h3>Observación de la seña</h3>
             </div>
-            <span class="live-label"><span></span> CÁMARA</span>
+            <span class="camera-status" id="camera-status"><span class="camera-status-dot"></span> INICIANDO CÁMARA</span>
           </div>
 
           <div id="video-container" class="camera-stage">
-            <video id="videoElement" playsinline style="display:none;"></video>
-            <canvas id="canvasElement" width="640" height="480"></canvas>
-            <div class="frame-corner tl"></div><div class="frame-corner tr"></div>
-            <div class="frame-corner bl"></div><div class="frame-corner br"></div>
-            <div class="camera-message">Ubica tus manos dentro del encuadre</div>
+            <video id="videoElement" playsinline muted aria-hidden="true"></video>
+            <canvas id="canvasElement" width="640" height="480" aria-label="Vista de cámara y puntos de referencia de las manos"></canvas>
+            <div class="camera-overlay-top">
+              <span class="camera-overlay-label"><span class="camera-record-dot"></span> VISTA EN TIEMPO REAL</span>
+              <span class="camera-resolution">480 × 360</span>
+            </div>
+            <div class="frame-corner frame-tl" aria-hidden="true"></div>
+            <div class="frame-corner frame-tr" aria-hidden="true"></div>
+            <div class="frame-corner frame-bl" aria-hidden="true"></div>
+            <div class="frame-corner frame-br" aria-hidden="true"></div>
+            <div class="camera-message" id="camera-message">
+              <span class="camera-message-icon" aria-hidden="true">⌖</span>
+              <span>Ubica tus manos dentro del encuadre</span>
+            </div>
           </div>
 
-          <div class="result-box">
-            <div class="result-heading"><span>RESULTADO DEL RECONOCIMIENTO</span><span class="result-chip">TEXTO</span></div>
-            <div id="textoTraduccion" class="result-text">Cargando sistema de IA...</div>
-            <div class="result-bottom"><span>Salida interpretada</span><span class="ready-text">● Procesamiento activo</span></div>
+          <div class="camera-help-row">
+            <span><span class="help-symbol" aria-hidden="true">✓</span> Mantén las manos visibles</span>
+            <span><span class="help-symbol" aria-hidden="true">✓</span> Usa iluminación uniforme</span>
+            <span><span class="help-symbol" aria-hidden="true">✓</span> Evita movimientos fuera del cuadro</span>
           </div>
+
+          <section class="translation-result" aria-labelledby="result-heading">
+            <div class="result-topline">
+              <div>
+                <span class="result-eyebrow">SALIDA INTERPRETADA</span>
+                <h3 id="result-heading">Resultado del reconocimiento</h3>
+              </div>
+              <span class="result-type">TEXTO <span aria-hidden="true">＋</span> VOZ</span>
+            </div>
+            <div class="result-content">
+              <div id="textoTraduccion" class="result-text" aria-live="polite" aria-atomic="true">Preparando el sistema...</div>
+              <p class="result-hint" id="result-hint">El resultado aparecerá aquí cuando se identifique una seña registrada.</p>
+            </div>
+            <div class="confidence-row">
+              <div class="confidence-labels"><span>Confianza estimada</span><strong id="confidence-value">—</strong></div>
+              <div class="confidence-track" id="confidence-track" role="progressbar" aria-label="Confianza estimada del reconocimiento" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+                <span class="confidence-fill" id="confidence-fill"></span>
+              </div>
+            </div>
+            <div class="result-actions">
+              <span class="speech-state" id="speech-status"><span class="speech-status-dot"></span> Voz lista cuando haya una seña</span>
+              <div class="speech-buttons">
+                <button id="btn-repetir-voz" class="button button-small button-blue" type="button" disabled><span aria-hidden="true">▶</span> Escuchar</button>
+                <button id="btn-detener-voz" class="button button-small button-quiet" type="button" disabled><span aria-hidden="true">■</span> Detener</button>
+              </div>
+            </div>
+          </section>
         </article>
 
         <aside class="side-panel">
-          <section class="card action-card">
-            <div class="card-title-row compact">
-              <div><p class="section-number">02 / ENTRENAMIENTO</p><h2>Registrar una seña</h2></div>
-              <span class="step-badge">A</span>
+          <section class="panel action-panel" id="entrenamiento">
+            <div class="panel-heading panel-heading-compact">
+              <div class="panel-heading-copy">
+                <span class="step-label">02 <span>/</span> ENTRENAMIENTO</span>
+                <h3>Registrar una seña</h3>
+              </div>
+              <span class="panel-icon panel-icon-blue" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M12 3v18M3 12h18M5.6 5.6l12.8 12.8M18.4 5.6 5.6 18.4"/></svg>
+              </span>
             </div>
-            <p class="card-description">Añade ejemplos para que el clasificador pueda identificar una nueva seña.</p>
-            <label for="input-sena">Nombre de la seña</label>
-            <input id="input-sena" type="text" placeholder="Ej. HOLA" autocomplete="off">
-            <button id="btn-grabar" class="btn btn-primary">● &nbsp; Empezar a grabar</button>
-            <div id="status-texto" class="status-line">Muestras de grabación: 0</div>
+            <p class="panel-description">Añade ejemplos visuales para que el clasificador pueda asociar el gesto con una palabra o expresión.</p>
+
+            <label for="input-sena">Nombre o etiqueta de la seña</label>
+            <div class="input-wrap">
+              <input id="input-sena" name="sena" type="text" placeholder="Ej. HOLA" autocomplete="off" maxlength="40" aria-describedby="input-help">
+              <span class="input-counter" id="input-counter">0/40</span>
+            </div>
+            <p class="field-help" id="input-help">Usa una etiqueta corta, por ejemplo: HOLA, GRACIAS o AGUA.</p>
+
+            <button id="btn-grabar" class="button button-primary button-full" type="button"><span class="button-icon" aria-hidden="true">●</span> Iniciar captura</button>
+            <div class="recording-status" id="status-texto" aria-live="polite"><span class="recording-status-icon" aria-hidden="true">✓</span><span>Preparado para registrar ejemplos.</span></div>
+
+            <div class="mini-metrics">
+              <div><span class="metric-number" id="total-clases">0</span><span class="metric-caption">Señas registradas</span></div>
+              <div><span class="metric-number" id="total-muestras">0</span><span class="metric-caption">Ejemplos locales</span></div>
+            </div>
+            <p class="panel-footnote">Consejo: mantén pulsado el proceso de captura durante unos instantes y deténlo cuando hayas reunido ejemplos suficientes del mismo gesto.</p>
           </section>
 
-          <section class="card action-card">
-            <div class="card-title-row compact">
-              <div><p class="section-number">03 / GESTIÓN DE DATOS</p><h2>Memoria del modelo</h2></div>
-              <span class="step-badge cloud">☁</span>
+          <section class="panel action-panel cloud-panel">
+            <div class="panel-heading panel-heading-compact">
+              <div class="panel-heading-copy">
+                <span class="step-label">03 <span>/</span> GESTIÓN DE DATOS</span>
+                <h3>Memoria del modelo</h3>
+              </div>
+              <span class="panel-icon panel-icon-teal" aria-hidden="true">
+                <svg viewBox="0 0 24 24" focusable="false"><path d="M7.2 18.5H6a4 4 0 0 1-.5-8A6.5 6.5 0 0 1 18 9a4.8 4.8 0 0 1 .1 9.5H16M12 21V11m-4 4 4-4 4 4"/></svg>
+              </span>
             </div>
-            <p class="card-description">Sincroniza las señas aprendidas con el almacenamiento configurado.</p>
-            <button id="btn-subir" class="btn btn-secondary">↑ &nbsp; Subir a la nube</button>
-            <button id="btn-descargar" class="btn btn-outline">↓ &nbsp; Descargar modelo</button>
-            <div id="nube-status" class="status-line cloud-status">Sin sincronizar</div>
-          </section>
+            <p class="panel-description">Guarda ejemplos en Firebase para compartir el modelo entre sesiones y cargar el conocimiento previamente almacenado.</p>
 
-          <section class="guidance">
-            <div class="guidance-icon">✓</div>
-            <div><strong>Recomendaciones de captura</strong><p>Utiliza iluminación uniforme, un fondo despejado y realiza la seña de frente a la cámara.</p></div>
+            <button id="btn-subir" class="button button-secondary button-full" type="button"><span class="button-icon" aria-hidden="true">↑</span> Sincronizar con la nube</button>
+            <button id="btn-descargar" class="button button-outline button-full" type="button"><span class="button-icon" aria-hidden="true">↓</span> Cargar modelo de la nube</button>
+
+            <div class="cloud-status-box" aria-live="polite">
+              <span class="cloud-status-symbol" aria-hidden="true">☁</span>
+              <div><strong id="nube-status">Sin sincronizar</strong><span id="cloud-detail">El modelo se intentará cargar automáticamente al iniciar.</span></div>
+            </div>
+
+            <div class="privacy-note"><span aria-hidden="true">i</span><p>La cámara se procesa en el navegador. Al sincronizar, se envían al servicio configurado los puntos numéricos de las manos usados por el clasificador, no un archivo de vídeo.</p></div>
           </section>
         </aside>
       </section>
 
-      <section class="principles">
-        <div><span>01</span><strong>Inclusión</strong><p>Comunicación más accesible.</p></div>
-        <div><span>02</span><strong>Tecnología</strong><p>Visión por computadora.</p></div>
-        <div><span>03</span><strong>Experimentación</strong><p>Aprendizaje mediante ejemplos.</p></div>
+      <section class="method-section" aria-labelledby="method-title">
+        <div class="method-heading">
+          <div><p class="section-kicker">CÓMO FUNCIONA</p><h2 id="method-title">Del gesto a la salida de voz</h2></div>
+          <p>Una secuencia experimental en tres momentos.</p>
+        </div>
+        <div class="method-grid">
+          <article class="method-card"><span class="method-number">01</span><span class="method-icon method-icon-blue" aria-hidden="true">⌁</span><h3>Captura visual</h3><p>MediaPipe identifica puntos de referencia de una o ambas manos a partir de la cámara.</p></article>
+          <article class="method-card"><span class="method-number">02</span><span class="method-icon method-icon-gold" aria-hidden="true">◎</span><h3>Clasificación</h3><p>El clasificador KNN compara los puntos observados con los ejemplos registrados.</p></article>
+          <article class="method-card"><span class="method-number">03</span><span class="method-icon method-icon-teal" aria-hidden="true">♫</span><h3>Salida de voz</h3><p>Cuando una etiqueta se mantiene estable, se presenta en pantalla y el navegador puede reproducirla.</p></article>
+        </div>
       </section>
-    </main>
 
-    <footer class="footer">
-      <span>LSC Conecta · Prototipo académico</span>
-      <span>Universidad Pedagógica Nacional · Colombia</span>
-    </footer>
-  </div>
+      <section class="recommendations" id="recomendaciones" aria-labelledby="recommendations-title">
+        <div class="recommendation-icon" aria-hidden="true">✦</div>
+        <div><h2 id="recommendations-title">Recomendaciones para una mejor captura</h2><p>Ubícate frente a una fuente de luz uniforme, despeja el fondo, procura que las manos permanezcan completas en el encuadre y registra cada seña desde varias capturas. La precisión depende de los ejemplos, la posición y las condiciones de uso.</p></div>
+      </section>
+    </div>
+  </main>
 
-  <!-- Carga del script de la aplicación -->
+  <!-- Pie de página propio del prototipo con accesos al sitio institucional -->
+  <footer class="site-footer">
+    <div class="footer-main page-width">
+      <div class="footer-brand-column">
+        <a class="footer-logo-link" href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer" aria-label="Visitar el portal oficial de la Universidad Pedagógica Nacional">
+          <img src="https://www.upn.edu.co/wp-content/uploads/2025/08/Identidad-UPN-25-vertical-azul-fondo-transparente.png" alt="Logotipo de la Universidad Pedagógica Nacional" width="100" height="100" loading="lazy">
+        </a>
+        <div class="footer-project-name">LSC Conecta</div>
+        <p>Prototipo académico de investigación en Diseño Tecnológico para explorar el reconocimiento de señas configuradas y la síntesis de voz.</p>
+        <a class="footer-official-link" href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer">Visitar el sitio oficial de la UPN <span aria-hidden="true">↗</span></a>
+      </div>
+
+      <div class="footer-links-column">
+        <h2>Enlaces institucionales</h2>
+        <a href="https://www.upn.edu.co/" target="_blank" rel="noopener noreferrer">Portal principal UPN <span aria-hidden="true">↗</span></a>
+        <a href="https://www.upn.edu.co/identidad-institucional/" target="_blank" rel="noopener noreferrer">Identidad institucional <span aria-hidden="true">↗</span></a>
+        <a href="https://investigaciones.upn.edu.co/" target="_blank" rel="noopener noreferrer">Investigación <span aria-hidden="true">↗</span></a>
+        <a href="https://www.upn.edu.co/?s=admisiones" target="_blank" rel="noopener noreferrer">Admisiones y oferta académica <span aria-hidden="true">↗</span></a>
+        <a href="https://www.upn.edu.co/?s=PQRSFD" target="_blank" rel="noopener noreferrer">PQRSFD y atención a la ciudadanía <span aria-hidden="true">↗</span></a>
+      </div>
+
+      <div class="footer-contact-column">
+        <h2>Contacto institucional</h2>
+        <p><span class="footer-contact-label">Dirección</span>Calle 72 n.º 11-86, Bogotá, Colombia</p>
+        <p><span class="footer-contact-label">Conmutador</span><a href="tel:+576015941894">(+57) 601 594 1894</a> · <a href="tel:+576013471190">601 347 1190</a></p>
+        <p><span class="footer-contact-label">Portal de contacto</span><a href="https://www.upn.edu.co/?s=contacto" target="_blank" rel="noopener noreferrer">Consultar canales oficiales <span aria-hidden="true">↗</span></a></p>
+      </div>
+    </div>
+
+    <div class="footer-bottom">
+      <div class="page-width footer-bottom-inner">
+        <p>© <span id="current-year">2026</span> LSC Conecta · Prototipo académico.</p>
+        <p>Identidad visual de referencia; esta aplicación no es el portal oficial de la Universidad Pedagógica Nacional.</p>
+      </div>
+    </div>
+  </footer>
+
+  <!-- La lógica de la aplicación se carga como módulo ES -->
   <script type="module" src="app.js"></script>
 </body>
 </html>
